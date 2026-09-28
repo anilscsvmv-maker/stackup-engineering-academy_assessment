@@ -1,38 +1,39 @@
 # StackUp Engineering Academy — Data Engineering Assessment
 # Core dependencies
-
+ 
 # Data processing
 pandas>=2.0.0
 numpy>=1.24.0
-
+ 
 # Big data
-
+pyspark>=3.4.0
+ 
 # Streaming
 kafka-python>=2.0.2
-
+ 
 # Orchestration
 apache-airflow>=2.7.0
-
+ 
 # Storage formats
 pyarrow>=12.0.0       # Parquet read/write
-
+ 
 # Database connectivity
 duckdb>=0.9.0         # Recommended local SQL engine for Task 2.1
 sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.0  # Postgres driver for Task 2.3's query_optimization.sql
-
+psycopg2-binary>=2.9.0  # Postgres driver for Task 2.3 EXPLAIN ANALYZE work
+ 
 # Data quality (optional — you may also implement checks manually)
 great-expectations>=0.17.0
-
+ 
 # Utilities
 python-dotenv>=1.0.0  # For environment variable management
 pyyaml>=6.0           # For config files
 click>=8.1.0          # For CLI arguments
-
+ 
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
-
+ 
 # Linting (encouraged)
 flake8>=6.0.0
 black>=23.0.0
