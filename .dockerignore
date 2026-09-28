@@ -1,0 +1,11 @@
+outputs/
+.git/
+__pycache__/
+*.pyc
+venv/
+.venv/
+solutions/submissions/*/03_big_data/
+solutions/submissions/*/04_infrastructure/
+.dockerignore
+Dockerfile
+docker-compose*.yml

@@ -1,0 +1,8 @@
+{
+  "missing_email_fixed": 10,
+  "invalid_hire_date_format_fixed": 5,
+  "implausible_hire_date_fixed": 3,
+  "years_experience_out_of_range_fixed": 5,
+  "salary_level_mismatch_fixed": 3,
+  "status_conflicts_found": 0
+}

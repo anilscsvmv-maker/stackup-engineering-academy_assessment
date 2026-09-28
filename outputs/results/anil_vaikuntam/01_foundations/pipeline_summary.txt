@@ -1,0 +1,18 @@
+Presight ETL Pipeline — Pillar 1 (Foundations) Run Summary
+==================================================
+Run timestamp:        2026-09-24T17:48:06.509283
+Pipeline elapsed time: 0.10 seconds
+
+Row counts (before -> after cleaning):
+  projects:   500    -> 500
+  employees:  1000   -> 1000
+
+Data quality decisions made:
+  - projects.budget / actual_cost: null -> 0 (see transform_projects)
+  - employees: 10 blank emails -> 'unknown@presight.ai'
+  - employees: 5 non-date-shaped + 3 implausible hire_date values -> null
+  - employees: 5 years_experience out-of-range values -> imputed with level median
+  - employees: 3 salary values outside the level's [p5,p95] band -> winsorised to p95
+  - employees: 0 Active-under-Inactive-manager conflicts found (guardrail, kept even at 0)
+
+Target: full Pillar 1 pipeline (projects + employees) in < 30 seconds. Actual: 0.10s (PASS)

@@ -1,0 +1,39 @@
+# Presight assessment — local overrides (Anil Vaikuntam)
+#
+# Compose auto-merges this file with docker-compose.yml. Kept separate from
+# the base file (which is fixed project infrastructure) so these are clearly
+# additions, not edits to the provided setup.
+#
+# 1) DATA_DIR/OUTPUT_DIR for the Airflow containers — matches the volume
+#    mounts already in docker-compose.yml (./datasets -> /opt/airflow/datasets,
+#    ./outputs -> /opt/airflow/outputs) and the env-override support added to
+#    etl_pipeline.py / etl_full.py / dq_framework.py for Task 4.1. Without
+#    these, the DAG's imported modules fall back to a host-path default that
+#    doesn't exist inside the container (see Pillar 3 SUBMISSION_NOTES).
+#
+# 2) A `etl` service for Task 4.1's bonus requirement — runs the
+#    containerised ETL pipeline via `docker compose run --rm etl`.
+
+services:
+  airflow-webserver:
+    environment:
+      DATA_DIR: /opt/airflow/datasets
+      OUTPUT_DIR: /opt/airflow/outputs
+
+  airflow-scheduler:
+    environment:
+      DATA_DIR: /opt/airflow/datasets
+      OUTPUT_DIR: /opt/airflow/outputs
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: presight-etl
+    networks:
+      - presight-net
+    environment:
+      DATA_DIR: /app/datasets
+      OUTPUT_DIR: /app/outputs
+    volumes:
+      - ./outputs:/app/outputs
