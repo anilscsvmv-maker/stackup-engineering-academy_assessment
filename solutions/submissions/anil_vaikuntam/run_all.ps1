@@ -64,7 +64,7 @@ if (Get-Command duckdb -ErrorAction SilentlyContinue) {
     try {
         duckdb outputs/presight_warehouse.duckdb -c ".read $dataModelSql"
     } catch {
-        Write-Host "Non-fatal: this step ends with a documented 'IO Error: __OUTPUTS__/projects_clean.csv not found' -- the actual schema + SCD2 build above it already succeeded (see QUICK_RUN.md row 3)." -ForegroundColor Yellow
+        Write-Host "Non-fatal: data_model.sql failed -- Section 2 is reloaded by run_queries.py in step 4 (see QUICK_RUN.md row 3)." -ForegroundColor Yellow
     }
 } else {
     # No DuckDB CLI on PATH -- run the same Section 1 through Python's duckdb.

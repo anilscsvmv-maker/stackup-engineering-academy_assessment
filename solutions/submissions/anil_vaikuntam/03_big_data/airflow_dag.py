@@ -13,14 +13,15 @@ quality gate that blocks downstream tasks if a critical check fails.
 
 DEPLOYMENT NOTE
 ----------------
-Deployed into the Airflow container's /opt/airflow/dags directory alongside
-three sibling modules — etl_pipeline.py, etl_full.py, dq_framework.py —
-copied in at deploy time (see deploy_dag.ps1). Airflow puts dags_folder on
-sys.path, so `import etl_pipeline` resolves without a package structure.
-docker-compose.yml mounts ./datasets -> /opt/airflow/datasets and
+Mounted into the Airflow container's /opt/airflow/dags directory alongside
+three sibling modules — etl_pipeline.py, etl_full.py, dq_framework.py — by
+the docker-compose.airflow.yml override (see deploy_dag.ps1), which replaces
+the base starter_files/ mount so starter_files/ is never touched. Airflow puts
+dags_folder on sys.path, so `import etl_pipeline` resolves without a package
+structure. docker-compose.yml mounts ./datasets -> /opt/airflow/datasets and
 ./outputs -> /opt/airflow/outputs, which is why DATA_DIR/OUTPUT_DIR default
-there; those imported modules read DATA_DIR/OUTPUT_DIR from the environment
-so the same code runs unmodified on the host and inside this container.
+there; the override sets the same env vars for the imported modules so the
+same code runs unmodified on the host and inside this container.
 
 HOW TO RUN
 ----------
@@ -45,10 +46,12 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = os.environ.get("DATA_DIR", "/opt/airflow/datasets")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/opt/airflow/outputs")
-# outputs/results/anil_vaikuntam/... — the submission-folder convention, so
-# multiple trainees' outputs in the shared repo don't collide. etl_full.py's
-# write_outputs() already lands the CSVs here on its own (it computes the
-# same path independently); this DAG's own pipeline_report goes here too.
+# outputs/results/anil_vaikuntam/03_big_data — the submission-folder
+# convention, so multiple trainees' outputs in the shared repo don't collide.
+# The pipeline report is written to OUTPUT_DIR (the Task 3.3e path) with a
+# copy here. The cleaned CSVs are NOT written here: etl_full.py's
+# write_outputs() lands them in its own .../02_sql_and_viz folder
+# (ETL_RESULTS_DIR below).
 RESULTS_DIR = os.environ.get("RESULTS_DIR", os.path.join(OUTPUT_DIR, "results", "anil_vaikuntam", "03_big_data"))
 
 # Critical-failure threshold for the DQ gate — completeness below this on a
@@ -57,10 +60,41 @@ RESULTS_DIR = os.environ.get("RESULTS_DIR", os.path.join(OUTPUT_DIR, "results", 
 CRITICAL_COMPLETENESS_THRESHOLD = 0.80
 KEY_COLUMNS = {"projects": "project_id", "employees": "employee_id", "transactions": "transaction_id"}
 
+# Files etl_full.write_outputs() writes into ETL_RESULTS_DIR.
+OUTPUT_FILES = ["projects_clean.csv", "employees_clean.csv", "transactions_clean.csv", "pipeline_summary.txt"]
+
 
 # ==============================================================================
 # Task 3.3a — DAG configuration
 # ==============================================================================
+#   dag_id:            presight_etl_pipeline
+#   Schedule:          daily at 06:00 UAE time (Asia/Dubai = UTC+4)
+#   catchup:           False
+#   max_active_runs:   1
+#   retries:           2, retry_delay = 5 minutes
+#   Tags:              ['presight', 'etl', 'assessment']
+
+DAG_ID = "presight_etl_pipeline"
+DAG_TIMEZONE = "Asia/Dubai"  # UAE time, UTC+4
+SCHEDULE = "0 6 * * *"  # 06:00 in DAG_TIMEZONE (applied via start_date's tz)
+START_DATE = pendulum.datetime(2025, 1, 1, tz=DAG_TIMEZONE)
+CATCHUP = False
+MAX_ACTIVE_RUNS = 1
+TAGS = ["presight", "etl", "assessment"]
+
+
+def alert_on_failure(context):
+    """
+    Task 3.3d failure alerting (log variant). Fires once a task has exhausted
+    its retries; email_on_failure stays False because the local Airflow stack
+    has no SMTP server configured.
+    """
+    ti = context["ti"]
+    logger.error(
+        "ALERT: DAG %s task %s FAILED after all retries (run %s): %s. Log: %s",
+        ti.dag_id, ti.task_id, context["run_id"], context.get("exception"), ti.log_url,
+    )
+
 
 default_args = {
     "owner": "anil_vaikuntam",
@@ -68,6 +102,7 @@ default_args = {
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
     "email_on_failure": False,
+    "on_failure_callback": alert_on_failure,
 }
 
 
@@ -174,8 +209,11 @@ def task_load_to_output(**context):
     enriched_txn = enrich_transactions(raw_transactions, clean_projects, clean_emp)
 
     write_outputs(clean_projects, clean_emp, enriched_txn, elapsed_seconds=0.0)
-    logger.info("Wrote outputs to %s", ETL_RESULTS_DIR)
-    return f"Outputs written to {ETL_RESULTS_DIR}"
+    paths = [os.path.join(ETL_RESULTS_DIR, name) for name in OUTPUT_FILES]
+    for path in paths:
+        logger.info("Wrote %s", path)
+    context["ti"].xcom_push(key="files_written", value=paths)
+    return f"{len(paths)} files written to {ETL_RESULTS_DIR}"
 
 
 def task_generate_pipeline_report(**context):
@@ -189,11 +227,20 @@ def task_generate_pipeline_report(**context):
     projects_clean = ti.xcom_pull(task_ids="transform_and_enrich", key="projects_clean_count")
     employees_clean = ti.xcom_pull(task_ids="transform_and_enrich", key="employees_clean_count")
     transactions_clean = ti.xcom_pull(task_ids="transform_and_enrich", key="transactions_clean_count")
+    files_written = ti.xcom_pull(task_ids="load_to_output", key="files_written") or []
+
+    # Execution time = DAG run start -> now (this is the last real task).
+    run_started = context["dag_run"].start_date
+    now = pendulum.now("UTC")
+    elapsed = (now - run_started).total_seconds() if run_started else None
 
     lines = [
         "Presight ETL Pipeline — DAG Run Report",
         "=" * 50,
-        f"DAG run date: {execution_date}",
+        f"DAG run date:       {execution_date}",
+        f"Run started:        {run_started}",
+        f"Report generated:   {now}",
+        f"Execution time:     {elapsed:.1f} seconds" if elapsed is not None else "Execution time:     n/a",
         "",
         "Row counts (raw -> clean):",
         f"  projects:     {projects_raw} -> {projects_clean}",
@@ -204,33 +251,34 @@ def task_generate_pipeline_report(**context):
     ]
     for name, r in (dq_results or {}).items():
         lines.append(f"  {name}: {r['checks_passed']}/{r['checks_run']} checks passed")
-    lines += [
-        "",
-        f"Files written to: {ETL_RESULTS_DIR}",
-        "  projects_clean.csv, employees_clean.csv, transactions_clean.csv, pipeline_summary.txt",
-    ]
+    lines += ["", "Files written:"]
+    lines += [f"  {path}" for path in files_written]
 
-    os.makedirs(RESULTS_DIR, exist_ok=True)
-    report_path = os.path.join(RESULTS_DIR, f"pipeline_report_{execution_date.date()}.txt")
-    with open(report_path, "w") as f:
-        f.write("\n".join(lines))
-    logger.info("Pipeline report written to %s", report_path)
-    return report_path
+    # Task 3.3e path: outputs/pipeline_report_{execution_date}.txt, plus a copy
+    # in the trainee's results folder (README submission convention).
+    report_name = f"pipeline_report_{execution_date.date()}.txt"
+    report_paths = [os.path.join(OUTPUT_DIR, report_name), os.path.join(RESULTS_DIR, report_name)]
+    for report_path in report_paths:
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        logger.info("Pipeline report written to %s", report_path)
+    return report_paths[0]
 
 
 # ==============================================================================
-# Task 3.3a — DAG definition
+# DAG definition — all settings come from the Task 3.3a configuration block above
 # ==============================================================================
 
 with DAG(
-    dag_id="presight_etl_pipeline",
+    dag_id=DAG_ID,
     default_args=default_args,
     description="Daily ETL pipeline for Presight project management data",
-    schedule_interval="0 6 * * *",  # 06:00 in the DAG's timezone (Asia/Dubai, set via start_date below)
-    start_date=pendulum.datetime(2025, 1, 1, tz="Asia/Dubai"),
-    catchup=False,
-    max_active_runs=1,
-    tags=["presight", "etl", "assessment"],
+    schedule_interval=SCHEDULE,
+    start_date=START_DATE,
+    catchup=CATCHUP,
+    max_active_runs=MAX_ACTIVE_RUNS,
+    tags=TAGS,
 ) as dag:
 
     start = EmptyOperator(task_id="start")

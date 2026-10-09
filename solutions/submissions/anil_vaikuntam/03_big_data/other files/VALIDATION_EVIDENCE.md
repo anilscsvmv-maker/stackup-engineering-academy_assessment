@@ -67,7 +67,9 @@ severity-based forwarding logic actually fired, not just parsed.
 Run `manual__2026-09-24T00:00:00+00:00` via `airflow dags test` inside the
 `presight-airflow-webserver` container (Airflow 2.7.3) — every task actually executed
 against the real datasets, from a scratch copy of the DAG + its three sibling modules in
-`/tmp/presight_dags` (see HOW_TO_RUN.md for why not `deploy_dag.ps1`):
+`/tmp/presight_dags`. (`deploy_dag.ps1` now mounts the same files via a compose
+override without touching `starter_files/`, and a re-run that way on 2026-10-08 also
+finished `state=success`.)
 
 | Check | Result |
 |---|---|

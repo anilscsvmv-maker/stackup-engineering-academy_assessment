@@ -26,7 +26,7 @@ def main():
         queries_text = f.read()
 
     outputs_path = RESULTS_DIR.replace("\\", "/")
-    sql_text = sql_text.replace("__OUTPUTS__", outputs_path)
+    sql_text = sql_text.replace("'outputs/results/anil_vaikuntam/02_sql_and_viz/", f"'{outputs_path}/")
 
     section2 = sql_text[sql_text.index("-- SECTION 2"):]
 

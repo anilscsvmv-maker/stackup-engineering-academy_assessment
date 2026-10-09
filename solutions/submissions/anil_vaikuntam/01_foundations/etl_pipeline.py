@@ -340,6 +340,9 @@ def run_pipeline():
 
     # Step 1: Task 1.1 — projects
     raw_projects = load_projects(os.path.join(DATA_DIR, "projects.csv"))
+    # print('line number 343')
+    # print(raw_projects.head())
+    # print(raw_projects.info())
     projects_clean = transform_projects(raw_projects)
     _write_output(projects_clean, "projects_clean.csv")
     logger.info("Wrote projects_clean.csv (%d rows x %d cols)", *projects_clean.shape)

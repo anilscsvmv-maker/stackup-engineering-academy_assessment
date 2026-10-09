@@ -71,22 +71,19 @@ type outputs\results\anil_vaikuntam\01_foundations\pipeline_summary.txt
 Expect `(500, 17)`, and `Actual: <n>s (PASS)` in the summary — target is under 30 seconds.
 
 **Task 1.2 — Tool: DuckDB CLI (or any SQL client) against `outputs/presight_warehouse.duckdb`**
-Run `01_foundations/data_model.sql`'s Section 1 (star schema DDL + SCD2
-`dim_employee` build + validation). It has no path placeholders, so it runs
-as-is — no substitution needed. It's also self-re-runnable: `CREATE TABLE
-IF NOT EXISTS` + a `DELETE FROM` reset block at the top mean running it
-twice in a row against the same file just rebuilds cleanly.
+Run `01_foundations/data_model.sql` from the repo root. Section 1 builds the
+star schema DDL + SCD2 `dim_employee` + validation; Section 2 loads the other
+dimensions and the fact table. All paths are repo-root-relative, so it runs
+as-is. It's also self-re-runnable: `CREATE TABLE IF NOT EXISTS` + a
+`DELETE FROM` reset block at the top mean running it twice in a row against
+the same file just rebuilds cleanly.
 ```
 duckdb outputs\presight_warehouse.duckdb
 .read solutions/submissions/anil_vaikuntam/01_foundations/data_model.sql
 ```
-**Expected trailing error:** `.read` executes the whole file, so it also
-reaches Section 2 (load), which uses an `__OUTPUTS__` path placeholder that
-only `run_queries.py` substitutes. You'll see `IO Error:
-__OUTPUTS__/projects_clean.csv not found` at the end — harmless. Section 1
-(the schema + SCD2 build + validation queries above) has already completed
-and printed its results by that point; Section 2 gets loaded correctly later
-by `run_queries.py` (Pillar 2, step below).
+Section 2 reads `projects_clean.csv` / `transactions_clean.csv` from
+`outputs/results/anil_vaikuntam/02_sql_and_viz/`, so run step 2.2
+(`etl_full.py`) first if that folder is empty.
 (A DuckDB CLI build lives at `%LOCALAPPDATA%\duckdb-cli\duckdb.exe` if not
 already on PATH — add that folder to PATH, or call it by full path.)
 
@@ -100,7 +97,8 @@ duckdb outputs\presight_warehouse.duckdb -readonly -c "SELECT COUNT(*) FROM dim_
 Expect `2231`.
 
 **No DuckDB CLI installed?** The same Section 1 build runs through Python's
-`duckdb` package (identical engine, no path placeholder to trip over):
+`duckdb` package (identical engine; Section 1 only, so it doesn't need the
+2.2 CSVs yet):
 ```
 python -c "import duckdb; s=open('solutions/submissions/anil_vaikuntam/01_foundations/data_model.sql', encoding='utf-8').read(); duckdb.connect('outputs/presight_warehouse.duckdb').execute(s[:s.index('-- SECTION 2')])"
 ```
@@ -251,23 +249,18 @@ Python 3 kernel as the Pillar 2 notebook.
 ```
 .\solutions\submissions\anil_vaikuntam\03_big_data\deploy_dag.ps1
 ```
-Copies the DAG + sibling modules into the Airflow containers and restarts
-them — re-run this any time `etl_pipeline.py`/`etl_full.py`/`dq_framework.py`/
-`airflow_dag.py` change, since it's a one-time copy, not a live mount.
-**Side effect to know about:** `docker-compose.yml` bind-mounts
-`./starter_files` to the containers' `/opt/airflow/dags`, so this script
-deletes the tracked `starter_files/airflow_dag_starter.py` and leaves four
-copied files in `starter_files/` on the host. To test the DAG without
-touching the repo, run it from a scratch folder inside the container instead
-(bash shown; in Git Bash prefix with `MSYS_NO_PATHCONV=1`):
-```
-docker exec presight-airflow-webserver mkdir -p /tmp/presight_dags
-docker cp solutions/submissions/anil_vaikuntam/01_foundations/etl_pipeline.py presight-airflow-webserver:/tmp/presight_dags/etl_pipeline.py
-docker cp solutions/submissions/anil_vaikuntam/02_sql_and_viz/etl_full.py presight-airflow-webserver:/tmp/presight_dags/etl_full.py
-docker cp solutions/submissions/anil_vaikuntam/04_infrastructure/dq_framework.py presight-airflow-webserver:/tmp/presight_dags/dq_framework.py
-docker cp solutions/submissions/anil_vaikuntam/03_big_data/airflow_dag.py presight-airflow-webserver:/tmp/presight_dags/presight_etl_pipeline.py
-docker exec -e PYTHONPATH=/tmp/presight_dags presight-airflow-webserver airflow dags test presight_etl_pipeline <yyyy-mm-dd> -S /tmp/presight_dags
-```
+Recreates the Airflow webserver + scheduler with
+[docker-compose.airflow.yml](03_big_data/docker-compose.airflow.yml) layered
+over the base `docker-compose.yml`. The base file bind-mounts `./starter_files`
+to `/opt/airflow/dags`; the override replaces that mount (with an empty named
+volume) and bind-mounts the DAG + its three sibling modules read-only from
+this submission folder. So `starter_files/` is never read or modified, the
+starter DAG (same `dag_id`) isn't loaded next to ours, and later edits to
+`etl_pipeline.py`/`etl_full.py`/`dq_framework.py`/`airflow_dag.py` are picked
+up live without redeploying. It also sets `DATA_DIR`/`OUTPUT_DIR` to the
+mounted `/opt/airflow/datasets` and `/opt/airflow/outputs`.
+
+To go back to the stock setup, run `docker compose up -d airflow-webserver airflow-scheduler`.
 After `deploy_dag.ps1`, either trigger from the UI (`http://localhost:8081`, `admin`/`admin` —
 search `presight_etl_pipeline`, toggle it **on**, click **Trigger DAG**) or:
 ```

@@ -52,11 +52,10 @@ def get_spark_session() -> SparkSession:
         SparkSession.builder
         .appName("PresightEventsProcessing")
         .master("local[*]")
-        # Default 200 shuffle partitions is tuned for cluster-scale data, not
-        # ~100K local rows — that many tiny tasks means per-task JVM/scheduler
-        # overhead dominates actual work. Matching the local core count (every
-        # groupBy/window/join here is a shuffle) is the single biggest lever
-        # for a small local-mode job like this one.
+# Spark's default of 200 shuffle partitions is meant for big clusters.
+# With only ~100K rows, 200 tiny tasks spend more time starting up
+# than doing work. Using one partition per CPU core keeps every core
+# busy with less overhead (groupBy, window and join all shuffle).
         .config("spark.sql.shuffle.partitions", os.cpu_count() or 8)
         .getOrCreate()
     )

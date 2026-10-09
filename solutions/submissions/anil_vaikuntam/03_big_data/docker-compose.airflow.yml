@@ -1,0 +1,40 @@
+# Compose override for Task 3.3 — layered on top of the repo-root
+# docker-compose.yml by deploy_dag.ps1:
+#
+#   docker compose -f docker-compose.yml -f solutions/submissions/anil_vaikuntam/03_big_data/docker-compose.airflow.yml up -d --no-deps airflow-webserver airflow-scheduler
+#
+# The base file bind-mounts ./starter_files -> /opt/airflow/dags. Compose merges
+# volumes by container path, so the /opt/airflow/dags entry below REPLACES that
+# mount with an empty named volume: starter_files/ on the host is never read or
+# written, and the starter DAG (same dag_id) is no longer loaded alongside ours.
+# The DAG and its three sibling modules are then bind-mounted read-only, as
+# single files, straight from the submission folder — edits are picked up live.
+#
+# Relative paths resolve against the project directory (the repo root, where
+# the first -f file lives), not this file's folder.
+
+x-presight-dags: &presight-dags
+  - presight_dags:/opt/airflow/dags
+  - ./solutions/submissions/anil_vaikuntam/03_big_data/airflow_dag.py:/opt/airflow/dags/presight_etl_pipeline.py:ro
+  - ./solutions/submissions/anil_vaikuntam/01_foundations/etl_pipeline.py:/opt/airflow/dags/etl_pipeline.py:ro
+  - ./solutions/submissions/anil_vaikuntam/02_sql_and_viz/etl_full.py:/opt/airflow/dags/etl_full.py:ro
+  - ./solutions/submissions/anil_vaikuntam/04_infrastructure/dq_framework.py:/opt/airflow/dags/dq_framework.py:ro
+
+# The modules derive their repo-relative defaults from __file__, which inside
+# the container points at /opt/airflow/dags — so point them at the mounted
+# datasets/outputs folders explicitly. (RESULTS_DIR is left unset on purpose:
+# each module defaults it to its own outputs/results/... subfolder.)
+x-presight-env: &presight-env
+  DATA_DIR: /opt/airflow/datasets
+  OUTPUT_DIR: /opt/airflow/outputs
+
+services:
+  airflow-webserver:
+    environment: *presight-env
+    volumes: *presight-dags
+  airflow-scheduler:
+    environment: *presight-env
+    volumes: *presight-dags
+
+volumes:
+  presight_dags:

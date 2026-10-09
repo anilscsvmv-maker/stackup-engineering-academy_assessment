@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-09-24T13:46:46.159439+00:00",
+  "run_at": "2026-10-09T04:28:33.787154+00:00",
   "topic": "presight.project.events",
   "total_messages_consumed": 8333,
   "event_counts": {
@@ -20,6 +20,6 @@
     "milestone_reached": 16
   },
   "critical_escalations_forwarded": 14,
-  "elapsed_seconds": 13.8,
-  "throughput_messages_per_sec": 603.95
+  "elapsed_seconds": 14.15,
+  "throughput_messages_per_sec": 588.89
 }

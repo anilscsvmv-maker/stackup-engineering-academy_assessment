@@ -35,7 +35,8 @@ solutions/submissions/anil_vaikuntam/
 │   ├── spark_pipeline.py            # Task 3.1
 │   ├── kafka_streaming.py           # Task 3.2
 │   ├── airflow_dag.py               # Task 3.3 — imports Pillar 1/2/4 modules, doesn't duplicate them
-│   ├── deploy_dag.ps1               # copies the DAG + imports into the Airflow containers
+│   ├── deploy_dag.ps1               # mounts the DAG + imports into Airflow (starter_files/ untouched)
+│   ├── docker-compose.airflow.yml   # compose override used by deploy_dag.ps1
 │   ├── notebooks/big_data_explorer.ipynb    # live Spark/Kafka output exploration
 │   └── other files/                 # spark_pipeline_sql.py, README.md, VALIDATION_EVIDENCE.md
 ├── 04_infrastructure/
@@ -72,7 +73,7 @@ Every artifact has **one** canonical location.
 | `transactions_clean.csv`, `pipeline_summary.txt`, `dashboard_mockup.pdf` | `outputs/results/anil_vaikuntam/02_sql_and_viz/` |
 | Spark's 5 Parquet tables | `outputs/artifacts/anil_vaikuntam/03_big_data/spark/` — **gitignored**, regenerable binary build output |
 | Kafka `summary.json` | `outputs/results/anil_vaikuntam/03_big_data/kafka/` |
-| Airflow `pipeline_report_<date>.txt` | `outputs/results/anil_vaikuntam/03_big_data/` |
+| Airflow `pipeline_report_<date>.txt` | `outputs/` (Task 3.3e path) + copy in `outputs/results/anil_vaikuntam/03_big_data/` |
 | `data_governance_document.md`, `dq_report_*.md` | `outputs/results/anil_vaikuntam/04_infrastructure/` |
 
 ---

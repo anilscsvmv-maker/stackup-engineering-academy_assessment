@@ -11,5 +11,5 @@
 | consistency | PASS | amount >= 0: 0 violations |
 | referential_integrity | PASS | project_id -> projects.project_id: 0 orphaned values; approved_by -> employees.employee_id: 0 orphaned values |
 | distribution | **FAIL** | category: top value = 20.3% of rows; payment_status: top value = 75.1% of rows |
-| freshness | **FAIL** | transaction_date: most recent value is 51 days old (threshold 30) |
+| freshness | **FAIL** | transaction_date: most recent value is 66 days old (threshold 30) |
 | outliers | **FAIL** | amount: 1593 values beyond 3 std dev |

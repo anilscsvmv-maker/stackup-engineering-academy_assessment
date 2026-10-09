@@ -2,7 +2,7 @@
 # Core dependencies
  
 # Data processing
-pandas>=2.0.0
+pandas>=2.0.0,<3.0.0  # PySpark doesn't fully support pandas 3.x yet
 numpy>=1.24.0
  
 # Big data

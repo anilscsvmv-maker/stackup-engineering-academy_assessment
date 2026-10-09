@@ -23,14 +23,13 @@
 --
 -- HOW TO USE
 -- ----------
--- Section 1 has no path placeholders — run it directly in any SQL client
--- (DuckDB CLI, SQLTools against outputs/presight_warehouse.duckdb, etc.).
--- If the warehouse file already has these tables, delete
--- outputs/presight_warehouse.duckdb first for a clean rebuild (CREATE TABLE
--- fails on a table that already exists).
--- Section 2 (load) still uses an __OUTPUTS__ path placeholder, substituted
--- and run via:
+-- All paths are relative to the repo root — run the whole file directly in
+-- any SQL client started from there (DuckDB CLI, SQLTools against
+-- outputs/presight_warehouse.duckdb, etc.). It is re-runnable: the reset
+-- block in Section 1 clears every star-schema table before reloading.
+-- Section 2 (load) is also run by:
 --   solutions/submissions/anil_vaikuntam/02_sql_and_viz/run_queries.py
+-- which rewrites its paths to absolute ones, so it works from any directory.
 -- Then, against the loaded warehouse, see queries.sql and
 -- query_optimization.sql in 02_sql_and_viz/.
 -- =============================================================================
@@ -187,6 +186,8 @@ CREATE TABLE IF NOT EXISTS bridge_employee_project (
 -- degenerate fact attributes rather than their own dimensions — none of
 -- them have enough independent cardinality or attached metadata to justify
 -- the extra join.
+
+
 CREATE TABLE IF NOT EXISTS fact_transactions (
     transaction_key INTEGER PRIMARY KEY,
     transaction_id VARCHAR NOT NULL UNIQUE,
@@ -543,7 +544,7 @@ SELECT ROW_NUMBER() OVER (
     project_manager_id,
     priority,
     region
-FROM read_csv_auto('__OUTPUTS__/projects_clean.csv');
+FROM read_csv_auto('outputs/results/anil_vaikuntam/02_sql_and_viz/projects_clean.csv');
 -- ---------------------------------------------------------------------------
 -- dim_vendor
 -- ---------------------------------------------------------------------------
@@ -561,7 +562,7 @@ SELECT ROW_NUMBER() OVER (
 FROM (
         SELECT DISTINCT vendor_id,
             vendor_name
-        FROM read_csv_auto('__OUTPUTS__/transactions_clean.csv')
+        FROM read_csv_auto('outputs/results/anil_vaikuntam/02_sql_and_viz/transactions_clean.csv')
     );
 -- ---------------------------------------------------------------------------
 -- bridge_employee_project
@@ -616,7 +617,7 @@ SELECT ROW_NUMBER() OVER (
     t.payment_status,
     t.invoice_ref,
     t.notes
-FROM read_csv_auto('__OUTPUTS__/transactions_clean.csv') t
+FROM read_csv_auto('outputs/results/anil_vaikuntam/02_sql_and_viz/transactions_clean.csv') t
     LEFT JOIN dim_project dp ON dp.project_id = t.project_id
     LEFT JOIN dim_vendor dv ON dv.vendor_id = t.vendor_id
     LEFT JOIN dim_employee de ON de.employee_id = t.approved_by
